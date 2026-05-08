@@ -379,32 +379,23 @@ if __name__ == "__main__":
     motion_cols = [
         "ego_x", "ego_y",
         "ego_vx", "ego_vy",
-        "ego_ax", "ego_ay",
-        "ego_delta"
+        "ego_ax", "ego_ay"
     ]
 
 
     interaction_cols = [
-        "has_preceding",
         "preceding_gap",
-        "ttc_preceding",
+        "preceding_delta_v",
 
-
-        "has_following",
         "following_gap",
-        "ttc_following",
+        "following_delta_v",
 
-        "has_left_vehicle",
-        "left_lat_gap",
         "left_gap",
         "left_delta_v",
 
-        "has_right_vehicle",
-        "right_lat_gap",
         "right_gap",
         "right_delta_v",
     ]
-
 
     style_long_cols = [
         "v_tilde",
@@ -413,11 +404,9 @@ if __name__ == "__main__":
         "acc_norm",
     ]
 
-
     style_lat_cols = [
         "max_vy",
         "vy_sign_change",
-        "intent_lead_time",
         "lane_change_duration",
     ]
 
