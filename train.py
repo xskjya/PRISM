@@ -108,7 +108,6 @@ def train_epoch(
         loss = (
                 traj_loss_weight * traj_loss
                 + intent_loss_weight * intent_loss
-                + prob_loss_weight * prob_loss
                 + diversity_weight * modal_diversity_loss
         )
 
