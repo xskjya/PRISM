@@ -17,7 +17,7 @@ from modul.build_data import create_fixed_datasets
 from modul.plot_tool import plot_forgetting_curve
 from modul.tool import init_weights, plot_trajectory_compared
 from modul.warmupScheduler import WarmupScheduler
-
+from modul.model import PRISM
 
 def train_epoch(
         model,

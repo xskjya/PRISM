@@ -479,7 +479,7 @@ class MultiBranchFusion(nn.Module):
         return output
 
 
-class HighDSOTARES(nn.Module):
+class PRISM(nn.Module):
     def __init__(
             self,
             motion_dim,
