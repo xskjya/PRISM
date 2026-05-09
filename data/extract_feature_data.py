@@ -1092,7 +1092,7 @@ def get_optimal_workers_adaptive():
 
 
 if __name__ == "__main__":
-    DATA_DIR = r"./data"
+    DATA_DIR = r"highD-dataset/data"
     OUTPUT_DIR = "./lane_change_visualization_traj"
     SAVE_OUTPUT_DIR = "allFeature_traj_fixed_features"
 
