@@ -15,7 +15,7 @@ from tqdm import tqdm
 from modul.Dataset import DrivingDataset, collate_fn
 from modul.build_data import create_fixed_datasets
 from modul.plot_tool import plot_forgetting_curve
-from modul.tool import init_weights, plot_trajectory_compared
+from modul.tool import  plot_trajectory_compared, init_prism_weights
 from modul.warmupScheduler import WarmupScheduler
 from modul.model import PRISM
 
@@ -373,6 +373,9 @@ def eval_epoch(
             return intent_acc, ae_avg, ae_horizon_avg
 
 
+
+
+
 if __name__ == "__main__":
     name = "experiment"
 
@@ -437,7 +440,7 @@ if __name__ == "__main__":
 
 
     base_lr = 3e-4
-    batch_size = 1000  #
+    batch_size = 1000
     fps = 25
     K = 3
 
@@ -559,7 +562,7 @@ if __name__ == "__main__":
         K=K
     ).to(device)
 
-    init_weights(model, mode="kaiming")
+    init_prism_weights(model, weight_scale=5.0, bias_scale=0.1)
 
     optimizer = optim.Adam(model.parameters(), lr=base_lr)
 
@@ -602,6 +605,8 @@ if __name__ == "__main__":
             best_val_ade = checkpoint.get('best_val_ade', float("inf"))
             best_state = checkpoint.get('best_state', None)
             validation_history = checkpoint.get('validation_history', [])
+
+            print(f"load resume file successful!")
 
         except Exception as e:
             start_epoch = 0

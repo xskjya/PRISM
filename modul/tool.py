@@ -378,49 +378,82 @@ def get_scene_lr_config(scene_idx, base_lr):
         )
 
 
-def init_weights(model, mode="xavier", residual_init_scale=0.01):
-    residual_count = 0
-    normal_count = 0
-
-    for name, module in model.named_modules():
-        if isinstance(module, (nn.Linear, nn.Conv1d, nn.Conv2d)):
-            is_residual = any(keyword in name.lower() for keyword in
-                              ['res', 'residual', 'skip', 'shortcut'])
-
-            if is_residual:
-                nn.init.normal_(module.weight, mean=0.0, std=residual_init_scale)
+def init_prism_weights(model,
+                       weight_scale=1.0,
+                       bias_scale=0.0,
+                       decoder_last_std=0.01,
+                       intent_last_std=0.01,
+                       lstm_forget_bias=1.0,
+                       use_large_noise=False,
+                       large_noise_std=1.0):
+    if use_large_noise:
+        for name, module in model.named_modules():
+            if isinstance(module, nn.Linear):
+                nn.init.normal_(module.weight, mean=0.0, std=large_noise_std)
                 if module.bias is not None:
-                    nn.init.constant_(module.bias, 0.0)
-                residual_count += 1
-            else:
-                if mode == "xavier":
-                    nn.init.xavier_uniform_(module.weight)
-                elif mode == "kaiming":
-                    nn.init.kaiming_uniform_(module.weight, a=0, mode='fan_in', nonlinearity='relu')
-                elif mode == "orthogonal":
-                    nn.init.orthogonal_(module.weight)
-                else:
-                    nn.init.normal_(module.weight, mean=0.0, std=0.02)
-
-                if module.bias is not None:
-                    nn.init.constant_(module.bias, 0.0)
-                normal_count += 1
-
-        elif isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d)):
-            is_residual = any(keyword in name.lower() for keyword in
-                              ['res', 'residual', 'skip', 'shortcut'])
-
-            if is_residual:
-                nn.init.constant_(module.weight, 0.1)
+                    nn.init.normal_(module.bias, mean=0.0,
+                                    std=large_noise_std) if bias_scale > 0 else nn.init.constant_(module.bias, 0.0)
+            elif isinstance(module, nn.LSTM):
+                for param_name, param in module.named_parameters():
+                    if 'weight' in param_name:
+                        nn.init.normal_(param, mean=0.0, std=large_noise_std)
+                    elif 'bias' in param_name:
+                        nn.init.constant_(param, 0.0)
+                        if 'bias_ih' in param_name:
+                            hidden_size = module.hidden_size
+                            param.data[hidden_size:2 * hidden_size] = lstm_forget_bias
+            elif isinstance(module, nn.LayerNorm):
+                nn.init.constant_(module.weight, 1.0)
                 nn.init.constant_(module.bias, 0.0)
-            else:
+    else:
+        for name, module in model.named_modules():
+            if isinstance(module, nn.Linear):
+                nn.init.kaiming_uniform_(module.weight, a=0, mode='fan_in', nonlinearity='relu')
+                module.weight.data *= weight_scale
+                if module.bias is not None:
+                    if bias_scale > 0:
+                        nn.init.normal_(module.bias, mean=0.0, std=bias_scale)
+                    else:
+                        nn.init.constant_(module.bias, 0.0)
+            elif isinstance(module, nn.LSTM):
+                for param_name, param in module.named_parameters():
+                    if 'weight_ih' in param_name:
+                        nn.init.xavier_uniform_(param)
+                        param.data *= weight_scale
+                    elif 'weight_hh' in param_name:
+                        nn.init.orthogonal_(param)
+                        param.data *= weight_scale
+                    elif 'bias_ih' in param_name:
+                        nn.init.constant_(param, 0.0)
+                        param.data[module.hidden_size:2 * module.hidden_size] = lstm_forget_bias
+                        if bias_scale > 0:
+                            param.data += torch.randn_like(param.data) * bias_scale
+                    elif 'bias_hh' in param_name:
+                        nn.init.constant_(param, 0.0)
+                        if bias_scale > 0:
+                            param.data += torch.randn_like(param.data) * bias_scale
+            elif isinstance(module, nn.LayerNorm):
                 nn.init.constant_(module.weight, 1.0)
                 nn.init.constant_(module.bias, 0.0)
 
-    final_layers = []
-    for name, param in model.named_parameters():
-        if 'weight' in name and ('res' in name.lower() or 'residual' in name.lower()):
-            final_layers.append(f"{name}: mean={param.data.mean():.4f}, std={param.data.std():.4f}")
+    if hasattr(model, 'decoder') and hasattr(model.decoder, 'net'):
+        last_linear = model.decoder.net[-1]
+        if isinstance(last_linear, nn.Linear):
+            if use_large_noise:
+                nn.init.normal_(last_linear.weight, mean=0.0, std=large_noise_std)
+            else:
+                nn.init.normal_(last_linear.weight, mean=0.0, std=decoder_last_std)
+            nn.init.constant_(last_linear.bias, 0.0)
+
+    if hasattr(model, 'intent_head') and hasattr(model.intent_head, 'net'):
+        intent_last = model.intent_head.net[-1]
+        if isinstance(intent_last, nn.Linear):
+            if use_large_noise:
+                nn.init.normal_(intent_last.weight, mean=0.0, std=large_noise_std)
+            else:
+                nn.init.normal_(intent_last.weight, mean=0.0, std=intent_last_std)
+            nn.init.constant_(intent_last.bias, 0.0)
+
 
 
 def build_samples_from_df(df, T_h=20, T_f=30, motion_cols=None, style_long_cols=None, style_lat_cols=None):
